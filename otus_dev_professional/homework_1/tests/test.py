@@ -1,5 +1,4 @@
 import pytest
-import logging
 
 from ..log_analyzer import (
     check_errors_percent,

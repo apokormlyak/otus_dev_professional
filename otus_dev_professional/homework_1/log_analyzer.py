@@ -8,7 +8,6 @@ import re
 from string import Template
 import os.path
 
-
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -55,28 +54,36 @@ def get_log_file():
 def log_reader(file):
     try:
         reader = gzip.open if str(file).endswith(".gz") else open
-        LOGGER.info(f"Открываю файл с помощью {reader}")
-        exeptions_counter = 0
         with reader(file, "rt", encoding="utf-8") as f:
-            lines = f.readlines()
-            LOGGER.info(f"В файле логов {len(lines)} строк")
-        for line in lines:
-            try:
-                url = re.search(r" /(.*) H", line).group().strip().split(" ")[0]
-                request_time = re.search(r"([0-9][.])?[0-9]+$", line).group()
-                yield url, request_time
-            except Exception:
-                exeptions_counter += 1
-                logging.exception(Exception)
-                if not check_errors_percent(len(lines), exeptions_counter):
-                    logging.exception(
-                        "Большую часть анализируемого лога не удалось распарсить"
-                    )
-                    logging.exception("Прерываю")
-                    break
+            for line in f:
+                yield line
     except TypeError:
         LOGGER.error("Файл с логами не передан")
         return None
+    except IOError:
+        LOGGER.error("Файл с логами не найден")
+        return None
+
+
+def log_finder(file):
+    exeptions_counter = 0
+    line_counter = 0
+    for line in log_reader(file):
+        try:
+            url = re.search(r" /(.*) H", line).group().strip().split(" ")[0]
+            request_time = re.search(r"([0-9][.])?[0-9]+$", line).group()
+            line_counter += 1
+            yield url, request_time
+        except AttributeError:
+            exeptions_counter += 1
+            LOGGER.exception(AttributeError)
+        if not check_errors_percent(line_counter, exeptions_counter):
+            LOGGER.exception(
+                "Большую часть анализируемого лога не удалось распарсить"
+            )
+            LOGGER.exception("Прерываю")
+            break
+    return None
 
 
 def check_errors_percent(lines, exeptions_counter):
@@ -85,7 +92,7 @@ def check_errors_percent(lines, exeptions_counter):
             return False
         return True
     except ZeroDivisionError:
-        LOGGER.error(f"lines == 0")
+        LOGGER.error("lines == 0")
         return None
 
 
@@ -95,7 +102,7 @@ def log_analyzer(file):
         report = []
         total_requests_num = 0
         total_requests_time = float(0)
-        for line in log_reader(file):
+        for line in log_finder(file):
             total_requests_num += 1
             total_requests_time += float(line[1])
             line_data = {"url": line[0], "count": 1, "time_sum": float(line[1])}
@@ -144,7 +151,7 @@ def get_count_perc(count, total_requests_num):
     try:
         return round(count / total_requests_num * 100, 3)
     except ZeroDivisionError:
-        LOGGER.error(f"total_requests_num == 0")
+        LOGGER.error("total_requests_num == 0")
         return None
 
 
@@ -153,22 +160,32 @@ def get_time_perc(time_sum, total_requests_time):
     try:
         return round(time_sum / total_requests_time * 100, 3)
     except ZeroDivisionError:
-        LOGGER.error(f"total_requests_num == 0")
+        LOGGER.error("total_requests_num == 0")
         return None
 
 
 def render_report(date):
     LOGGER.info("Начинаю сборку отчета")
-    with open("report.html", "r") as f:
-        data = f.read()
-        template = Template(data)
-        with open("table_json.json", "r") as json_f:
-            table_json = json.load(json_f)
-    report_name = "report-" + date + ".html"
-    with open(report_name, "w+", encoding="UTF-8", errors="replace") as html_output:
-        html_output.write(template.safe_substitute(table_json=table_json))
-        # html_output.truncate()
-        LOGGER.info(f"Отчет {report_name} готов")
+    try:
+        with open("report.html", "r") as f:
+            data = f.read()
+            template = Template(data)
+            with open("table_json.json", "r") as json_f:
+                table_json = json.load(json_f)
+        report_name = "report-" + date + ".html"
+    except IOError:
+        LOGGER.error("Во время работы с файлом table_json.json возникла ошибка")
+        LOGGER.error(IOError)
+        return None
+    try:
+        with open(report_name, "w+", encoding="UTF-8", errors="replace") as html_output:
+            html_output.write(template.safe_substitute(table_json=table_json))
+            # html_output.truncate()
+            LOGGER.info(f"Отчет {report_name} готов")
+    except IOError:
+        LOGGER.error(f"Во время записи отчета {report_name} возникла ошибка")
+        LOGGER.error(IOError)
+        return None
 
 
 def main():
