@@ -44,9 +44,11 @@ class BaseField:
         self.nullable = nullable
 
     def validate(self, value):
-        return (((value is None and not self.required) or (value is not None))
-                and ((value is 'null' and self.nullable) or (value is not 'null'))
-                and self._max_val_validate(value))
+        return (
+            ((value is None and not self.required) or (value is not None))
+            and ((value is None and self.nullable) or (value is not None))
+            and self._max_val_validate(value)
+        )
 
     def _max_val_validate(self, value):
         return (self.max_val is None) or (value <= self.max_val)
@@ -64,7 +66,7 @@ class Meta(type):
         for name in fields.keys():
             del new_namespace[name]
 
-        new_namespace['_fields'] = fields
+        new_namespace["_fields"] = fields
         obj = super().__new__(self, name, bases, new_namespace)
         return obj
 
@@ -103,7 +105,7 @@ class EmailField(CharField):
             if not isinstance(value, str):
                 return False
             else:
-                return bool(str(value).find('@'))
+                return bool(str(value).find("@"))
         else:
             return False
 
@@ -120,7 +122,9 @@ class PhoneField(BaseField):
             if not isinstance(value, str) or not isinstance(value, int):
                 return False
             else:
-                return (len(str(value)) == self.len_number) and (str(value).startswith('7'))
+                return (len(str(value)) == self.len_number) and (
+                    str(value).startswith("7")
+                )
         else:
             return False
 
@@ -136,7 +140,7 @@ class DateField(BaseField):
             if not isinstance(value, datetime.datetime):
                 return False
             else:
-                return value == datetime.datetime.strptime(str(value), '%d.%M.%Y')
+                return value == datetime.datetime.strptime(str(value), "%d.%M.%Y")
         else:
             return False
 
@@ -151,9 +155,9 @@ class BirthDayField(DateField):
         if super().validate(value):
             return False
         else:
-            return ((datetime.datetime.strptime(value, '%d.%M.%Y') -
-                     datetime.datetime.now()).total_seconds() <=
-                    (datetime.timedelta(days=365 * 70).total_seconds()))
+            return (
+                datetime.datetime.strptime(value, "%d.%M.%Y") - datetime.datetime.now()
+            ).total_seconds() <= (datetime.timedelta(days=365 * 70).total_seconds())
 
 
 class GenderField(BaseField):
@@ -217,7 +221,9 @@ class MethodRequest(object):
 
 def check_auth(request):
     if request.is_admin:
-        digest = hashlib.sha512(datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT).hexdigest()
+        digest = hashlib.sha512(
+            datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT
+        ).hexdigest()
     else:
         digest = hashlib.sha512(request.account + request.login + SALT).hexdigest()
     if digest == request.token:
@@ -231,20 +237,18 @@ def method_handler(request, ctx, store):
 
 
 class MainHTTPHandler(BaseHTTPRequestHandler):
-    router = {
-        "method": method_handler
-    }
+    router = {"method": method_handler}
     store = None
 
     def get_request_id(self, headers):
-        return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
+        return headers.get("HTTP_X_REQUEST_ID", uuid.uuid4().hex)
 
     def do_POST(self):
         response, code = {}, OK
         context = {"request_id": self.get_request_id(self.headers)}
         request = None
         try:
-            data_string = self.rfile.read(int(self.headers['Content-Length']))
+            data_string = self.rfile.read(int(self.headers["Content-Length"]))
             request = json.loads(data_string)
         except:
             code = BAD_REQUEST
@@ -254,7 +258,9 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
             logging.info("%s: %s %s" % (self.path, data_string, context["request_id"]))
             if path in self.router:
                 try:
-                    response, code = self.router[path]({"body": request, "headers": self.headers}, context, self.store)
+                    response, code = self.router[path](
+                        {"body": request, "headers": self.headers}, context, self.store
+                    )
                 except Exception as e:
                     logging.exception("Unexpected error: %s" % e)
                     code = INTERNAL_ERROR
@@ -279,8 +285,12 @@ if __name__ == "__main__":
     op.add_option("-p", "--port", action="store", type=int, default=8080)
     op.add_option("-l", "--log", action="store", default=None)
     (opts, args) = op.parse_args()
-    logging.basicConfig(filename=opts.log, level=logging.INFO,
-                        format='[%(asctime)s] %(levelname).1s %(message)s', datefmt='%Y.%m.%d %H:%M:%S')
+    logging.basicConfig(
+        filename=opts.log,
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname).1s %(message)s",
+        datefmt="%Y.%m.%d %H:%M:%S",
+    )
     server = HTTPServer(("localhost", opts.port), MainHTTPHandler)
     logging.info("Starting server at %s" % opts.port)
     try:

@@ -26,9 +26,12 @@ def decorator():
 
 
 callcounts = {}
+
+
 def countcalls(func):
     """Декоратор, подсчитывающий вызовы декорируемой функции
     Decorator that counts calls made to the function decorated."""
+
     def wrapper(*args):
         try:
             callcounts[func] += 1
@@ -36,6 +39,7 @@ def countcalls(func):
             callcounts[func] = 1
         finally:
             return func(*args)
+
     return wrapper
 
 
@@ -45,6 +49,7 @@ def memo(func):
     Memoize a function so that it caches all return values for
     faster future lookups.
     """
+
     def wrapper(*args):
         cache = {}
         try:
@@ -54,6 +59,7 @@ def memo(func):
             return result
         except TypeError:
             return func(*args)
+
     return wrapper
 
 
@@ -62,8 +68,10 @@ def n_ary(func):
     Given binary function f(x, y), return an n_ary function such
     that f(x, y, z) = f(x, f(y,z)), etc. Also allow f(x) = x.
     """
+
     def wrapper(x, *args):
         return x if not args else func(x, func(*args))
+
     return wrapper
 
 

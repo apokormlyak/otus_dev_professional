@@ -78,9 +78,7 @@ def log_finder(file):
             exeptions_counter += 1
             LOGGER.exception(AttributeError)
         if not check_errors_percent(line_counter, exeptions_counter):
-            LOGGER.exception(
-                "Большую часть анализируемого лога не удалось распарсить"
-            )
+            LOGGER.exception("Большую часть анализируемого лога не удалось распарсить")
             LOGGER.exception("Прерываю")
             break
     return None
