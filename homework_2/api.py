@@ -255,6 +255,9 @@ def method_handler(request, ctx, store):
                 #
             # response, code = {"score": score}, OK
             request['context'] = vars(online_score).keys()
+        elif method.method == 'clients_interests':
+            # clients_interests = ClientsInterestsRequest()
+                ...
         if response is None:
             response, code = {"code": INVALID_REQUEST, "error": ERRORS[INVALID_REQUEST]}, INVALID_REQUEST
     except AttributeError:
