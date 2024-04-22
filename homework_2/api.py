@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import abc
 import json
 import datetime
 import logging
@@ -9,6 +8,7 @@ import hashlib
 import uuid
 from optparse import OptionParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import scoring
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
@@ -55,7 +55,7 @@ class BaseField:
 
 
 class Meta(type):
-    def __new__(self, name, bases, namespace):
+    def __new__(cls, name, bases, namespace):
         fields = {
             name: field
             for name, field in namespace.items()
@@ -67,12 +67,25 @@ class Meta(type):
             del new_namespace[name]
 
         new_namespace["_fields"] = fields
-        obj = super().__new__(self, name, bases, new_namespace)
-        return obj
+        return super().__new__(cls, name, bases, new_namespace)
+
+
+class Base(metaclass=Meta):
+    def __init__(self, request):
+        for name, field in request.items():
+            setattr(self, name, field)
+
+    def __setattr__(self, key, value):
+        if key in self._fields:
+            if self._fields[key].validate(value):
+                super().__setattr__(key, value)
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
 
 
 class CharField(BaseField):
-    __metaclass__ = Meta
 
     def __init__(self, value=None, required=False, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
@@ -82,20 +95,15 @@ class CharField(BaseField):
 
 
 class ArgumentsField(BaseField):
-    __metaclass__ = Meta
-
-    def __init__(self, value, required=True, nullable=True, max_len=None):
+    def __init__(self, value=None, required=True, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
+        self.value = value
 
     def validate(self, value):
-        if super().validate(value):
-            ...
-        else:
-            return False
+        return super().validate(value)
 
 
 class EmailField(CharField):
-    __metaclass__ = Meta
 
     def __init__(self, value=None, required=False, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_len=max_len)
@@ -111,7 +119,6 @@ class EmailField(CharField):
 
 
 class PhoneField(BaseField):
-    __metaclass__ = Meta
 
     def __init__(self, value=None, required=False, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
@@ -119,7 +126,7 @@ class PhoneField(BaseField):
 
     def validate(self, value):
         if super().validate(value):
-            if not isinstance(value, str) or not isinstance(value, int):
+            if not isinstance(value, str) and not isinstance(value, int):
                 return False
             else:
                 return (len(str(value)) == self.len_number) and (
@@ -130,7 +137,6 @@ class PhoneField(BaseField):
 
 
 class DateField(BaseField):
-    __metaclass__ = Meta
 
     def __init__(self, value=None, required=False, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
@@ -146,22 +152,20 @@ class DateField(BaseField):
 
 
 class BirthDayField(DateField):
-    __metaclass__ = Meta
 
     def __init__(self, value=None, required=False, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_len=max_len)
 
     def validate(self, value):
         if super().validate(value):
-            return False
-        else:
             return (
-                datetime.datetime.strptime(value, "%d.%M.%Y") - datetime.datetime.now()
+                    datetime.datetime.strptime(value, "%d.%M.%Y") - datetime.datetime.now()
             ).total_seconds() <= (datetime.timedelta(days=365 * 70).total_seconds())
+        else:
+            return False
 
 
 class GenderField(BaseField):
-    __metaclass__ = Meta
 
     def __init__(self, value=UNKNOWN, required=False, nullable=True, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
@@ -174,7 +178,6 @@ class GenderField(BaseField):
 
 
 class ClientIDsField(BaseField):
-    __metaclass__ = Meta
 
     def __init__(self, value=0, required=True, nullable=False, max_len=None):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
@@ -193,12 +196,12 @@ class ClientIDsField(BaseField):
             return False
 
 
-class ClientsInterestsRequest(object):
+class ClientsInterestsRequest(Base):
     client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
 
 
-class OnlineScoreRequest(object):
+class OnlineScoreRequest(Base):
     first_name = CharField(required=False, nullable=True)
     last_name = CharField(required=False, nullable=True)
     email = EmailField(required=False, nullable=True)
@@ -207,12 +210,19 @@ class OnlineScoreRequest(object):
     gender = GenderField(required=False, nullable=True)
 
 
-class MethodRequest(object):
+class MethodRequest(Base):
     account = CharField(required=False, nullable=True)
     login = CharField(required=True, nullable=True)
     token = CharField(required=True, nullable=True)
     arguments = ArgumentsField(required=True, nullable=True)
     method = CharField(required=True, nullable=False)
+
+    def __init__(self, request):
+        super().__init__(request)
+        try:
+            self.login = request["login"]
+        except KeyError:
+            self.login = None
 
     @property
     def is_admin(self):
@@ -222,10 +232,10 @@ class MethodRequest(object):
 def check_auth(request):
     if request.is_admin:
         digest = hashlib.sha512(
-            datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT
+            (datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT).encode('utf-8')
         ).hexdigest()
     else:
-        digest = hashlib.sha512(request.account + request.login + SALT).hexdigest()
+        digest = hashlib.sha512((request.account + request.login + SALT).encode('utf-8')).hexdigest()
     if digest == request.token:
         return True
     return False
@@ -233,6 +243,22 @@ def check_auth(request):
 
 def method_handler(request, ctx, store):
     response, code = None, None
+    try:
+        method = MethodRequest(request['body'])
+        if not check_auth(method):
+            return {"code": FORBIDDEN, "error": ERRORS[FORBIDDEN]}, FORBIDDEN
+        if method.method == 'online_score':
+            online_score = OnlineScoreRequest(method.arguments)
+            score = scoring.get_score(**vars(online_score))
+            if method.is_admin:
+                score = int(ADMIN_SALT)
+                #
+            # response, code = {"score": score}, OK
+            request['context'] = vars(online_score).keys()
+        if response is None:
+            response, code = {"code": INVALID_REQUEST, "error": ERRORS[INVALID_REQUEST]}, INVALID_REQUEST
+    except AttributeError:
+        response, code = {"code": INVALID_REQUEST, "error": ERRORS[INVALID_REQUEST]}, INVALID_REQUEST
     return response, code
 
 
