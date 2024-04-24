@@ -2,7 +2,7 @@ import random
 
 
 def get_score(
-    phone, email, birthday=None, gender=None, first_name=None, last_name=None
+    phone=None, email=None, birthday=None, gender=None, first_name=None, last_name=None
 ):
     score = 0
     if phone:
@@ -16,7 +16,7 @@ def get_score(
     return score
 
 
-def get_interests(store, cid):
+def get_interests(cid):
     interests = [
         "cars",
         "pets",

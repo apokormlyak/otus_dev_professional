@@ -37,21 +37,25 @@ GENDERS = {
 
 
 class BaseField:
-    def __init__(self, value, required=False, nullable=True, max_val=None):
+    def __init__(self, value, required=False, nullable=False, max_val=None):
         self.value = value
         self.max_val = max_val
         self.required = required
         self.nullable = nullable
+        self.empty_values = [None, '']
 
     def validate(self, value):
         return (
-            ((value is None and not self.required) or (value is not None))
-            and ((value is None and self.nullable) or (value is not None))
-            and self._max_val_validate(value)
+                ((value in self.empty_values and not self.required) or (value is not None))
+                and ((value in self.empty_values and not self.nullable) or (value is not None))
+                and self._max_val_validate(value)
         )
 
     def _max_val_validate(self, value):
         return (self.max_val is None) or (value <= self.max_val)
+
+    def get_context(self):
+        return [field for field, value in self.__dict__.items() if field]
 
 
 class Meta(type):
@@ -113,7 +117,7 @@ class EmailField(CharField):
             if not isinstance(value, str):
                 return False
             else:
-                return bool(str(value).find("@"))
+                return bool(str(value).find("@") + 1)
         else:
             return False
 
@@ -143,10 +147,14 @@ class DateField(BaseField):
 
     def validate(self, value):
         if super().validate(value):
-            if not isinstance(value, datetime.datetime):
-                return False
+            if len(value.split('.')) == 3:
+                try:
+                    datetime.datetime.strptime(value, '%d.%M.%Y')
+                    return True
+                except Exception:
+                    return False
             else:
-                return value == datetime.datetime.strptime(str(value), "%d.%M.%Y")
+                return False
         else:
             return False
 
@@ -159,7 +167,7 @@ class BirthDayField(DateField):
     def validate(self, value):
         if super().validate(value):
             return (
-                    datetime.datetime.strptime(value, "%d.%M.%Y") - datetime.datetime.now()
+                    datetime.datetime.now() - datetime.datetime.strptime(value, "%d.%M.%Y")
             ).total_seconds() <= (datetime.timedelta(days=365 * 70).total_seconds())
         else:
             return False
@@ -187,6 +195,8 @@ class ClientIDsField(BaseField):
         if super().validate(value):
             if not isinstance(value, list):
                 return False
+            if not value:
+                return False
             else:
                 for el in value:
                     if not isinstance(el, int):
@@ -200,6 +210,9 @@ class ClientsInterestsRequest(Base):
     client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
 
+    def get_context(self):
+        return {'nclients': len(self.client_ids)}
+
 
 class OnlineScoreRequest(Base):
     first_name = CharField(required=False, nullable=True)
@@ -208,6 +221,9 @@ class OnlineScoreRequest(Base):
     phone = PhoneField(required=False, nullable=True)
     birthday = BirthDayField(required=False, nullable=True)
     gender = GenderField(required=False, nullable=True)
+
+    def get_context(self):
+        return {'has': [field for field, value in vars(self).items()]}
 
 
 class MethodRequest(Base):
@@ -228,6 +244,9 @@ class MethodRequest(Base):
     def is_admin(self):
         return self.login == ADMIN_LOGIN
 
+    def get_context(self):
+        self.arguments.get_context()
+
 
 def check_auth(request):
     if request.is_admin:
@@ -241,6 +260,33 @@ def check_auth(request):
     return False
 
 
+def online_score_handler(arguments, is_admin=False):
+    score = 0
+    if arguments:
+        score = ADMIN_SALT
+        if not is_admin:
+            score = scoring.get_score(**arguments)
+    return {"score": int(score)}, OK
+
+
+def validate_online_score_arguments(value):
+    control_fields = [('email', 'phone'), ('first_name', 'last_name'), ('gender', 'birthday')]
+    count = 0
+    for (f1, f2) in control_fields:
+        if f1 in value.keys() and f2 in value.keys():
+            count += 1
+    if count == 0:
+        return False
+    return True
+
+
+def clients_interests_handler(cid):
+    interests = {}
+    for cid in cid:
+        interests[cid] = scoring.get_interests(cid)
+    return interests, OK
+
+
 def method_handler(request, ctx, store):
     response, code = None, None
     try:
@@ -248,16 +294,14 @@ def method_handler(request, ctx, store):
         if not check_auth(method):
             return {"code": FORBIDDEN, "error": ERRORS[FORBIDDEN]}, FORBIDDEN
         if method.method == 'online_score':
-            online_score = OnlineScoreRequest(method.arguments)
-            score = scoring.get_score(**vars(online_score))
-            if method.is_admin:
-                score = int(ADMIN_SALT)
-                #
-            # response, code = {"score": score}, OK
-            request['context'] = vars(online_score).keys()
+            if validate_online_score_arguments(method.arguments):
+                online_score = OnlineScoreRequest(method.arguments)
+                response, code = online_score_handler(vars(online_score), is_admin=method.is_admin)
+                ctx.update(online_score.get_context())
         elif method.method == 'clients_interests':
-            # clients_interests = ClientsInterestsRequest()
-                ...
+            clients_interests = ClientsInterestsRequest(method.arguments)
+            response, code = clients_interests_handler(clients_interests.client_ids)
+            ctx.update(clients_interests.get_context())
         if response is None:
             response, code = {"code": INVALID_REQUEST, "error": ERRORS[INVALID_REQUEST]}, INVALID_REQUEST
     except AttributeError:
