@@ -151,7 +151,7 @@ class DateField(BaseField):
                 try:
                     datetime.datetime.strptime(value, '%d.%M.%Y')
                     return True
-                except Exception:
+                except ValueError:
                     return False
             else:
                 return False
@@ -255,9 +255,7 @@ def check_auth(request):
         ).hexdigest()
     else:
         digest = hashlib.sha512((request.account + request.login + SALT).encode('utf-8')).hexdigest()
-    if digest == request.token:
-        return True
-    return False
+    return digest == request.token
 
 
 def online_score_handler(arguments, is_admin=False):
@@ -275,9 +273,7 @@ def validate_online_score_arguments(value):
     for (f1, f2) in control_fields:
         if f1 in value.keys() and f2 in value.keys():
             count += 1
-    if count == 0:
-        return False
-    return True
+    return count != 0
 
 
 def clients_interests_handler(cid):
