@@ -10,7 +10,9 @@ class TestSuite(unittest.TestCase):
         self.store = None
 
     def get_response(self, request):
-        return api.method_handler({"body": request, "headers": self.headers}, self.context, self.store)
+        return api.method_handler(
+            {"body": request, "headers": self.headers}, self.context, self.store
+        )
 
     def test_empty_request(self):
         _, code = self.get_response({})
