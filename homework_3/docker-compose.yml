@@ -1,0 +1,25 @@
+version: "3"
+
+services:
+  redis:
+      image: redis:7.0.0
+      restart: always
+      container_name: redis
+      command: [ "redis-server", "--port", "6379", "--appendonly", "yes","--maxmemory", "1gb", "--maxmemory-policy", "allkeys-lru" ]
+      ports:
+        - "6379:6379"
+      volumes:
+        - redis_data:/data
+      networks:
+        - net
+
+networks:
+  net:
+
+volumes:
+    static_volume: { }
+    media_volume: { }
+    db_data:
+        external: true
+    redis_data:
+      external: true

@@ -98,8 +98,7 @@ class CharField(BaseField):
         super().__init__(value, required=required, nullable=nullable, max_val=max_len)
 
     def validate(self, value):
-        if super().validate(value):
-            return isinstance(value, str)
+        return super().validate(value)
 
 
 class ArgumentsField(BaseField):
@@ -264,12 +263,12 @@ def check_auth(request):
     return digest == request.token
 
 
-def online_score_handler(arguments, is_admin=False):
+def online_score_handler(store, arguments, is_admin=False):
     score = 0
     if arguments:
         score = ADMIN_SALT
         if not is_admin:
-            score = scoring.get_score(**arguments)
+            score = scoring.get_score(store, **arguments)
     return {"score": int(score)}, OK
 
 
@@ -286,10 +285,10 @@ def validate_online_score_arguments(value):
     return count != 0
 
 
-def clients_interests_handler(cid):
+def clients_interests_handler(store, cid):
     interests = {}
     for cid in cid:
-        interests[cid] = scoring.get_interests(cid)
+        interests[cid] = scoring.get_interests(store, cid)
     return interests, OK
 
 
@@ -303,12 +302,14 @@ def method_handler(request, ctx, store):
             if validate_online_score_arguments(method.arguments):
                 online_score = OnlineScoreRequest(method.arguments)
                 response, code = online_score_handler(
-                    vars(online_score), is_admin=method.is_admin
+                    store, vars(online_score), is_admin=method.is_admin
                 )
                 ctx.update(online_score.get_context())
         elif method.method == "clients_interests":
             clients_interests = ClientsInterestsRequest(method.arguments)
-            response, code = clients_interests_handler(clients_interests.client_ids)
+            response, code = clients_interests_handler(
+                store, clients_interests.client_ids
+            )
             ctx.update(clients_interests.get_context())
         if response is None:
             response, code = {

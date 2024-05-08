@@ -4,7 +4,7 @@ import functools
 import logging
 import unittest
 
-import api
+from .. import api
 
 
 def cases(cases):
@@ -34,11 +34,13 @@ class TestSuite(unittest.TestCase):
     def set_valid_auth(self, request):
         if request.get("login") == api.ADMIN_LOGIN:
             request["token"] = hashlib.sha512(
-                (datetime.datetime.now().strftime("%Y%m%d%H") + api.ADMIN_SALT).encode('utf-8')
+                (datetime.datetime.now().strftime("%Y%m%d%H") + api.ADMIN_SALT).encode(
+                    "utf-8"
+                )
             ).hexdigest()
         else:
             msg = request.get("account", "") + request.get("login", "") + api.SALT
-            request["token"] = hashlib.sha512(msg.encode('utf-8')).hexdigest()
+            request["token"] = hashlib.sha512(msg.encode("utf-8")).hexdigest()
 
     def test_empty_request(self):
         _, code = self.get_response({})
@@ -88,41 +90,41 @@ class TestSuite(unittest.TestCase):
 
     @cases(
         [
-            # {},
-            # {"phone": "79175002040"},
-            # {"phone": "89175002040", "email": "stupnikov@otus.ru"},
-            # {"phone": "79175002040", "email": "stupnikovotus.ru"},
-            # {"phone": "79175002040", "email": "stupnikov@otus.ru", "gender": -1},
-            # {"phone": "79175002040", "email": "stupnikov@otus.ru", "gender": "1"},
+            {},
+            {"phone": "79175002040"},
+            {"phone": "89175002040", "email": "stupnikov@otus.ru"},
+            {"phone": "79175002040", "email": "stupnikovotus.ru"},
+            {"phone": "79175002040", "email": "stupnikov@otus.ru", "gender": -1},
+            {"phone": "79175002040", "email": "stupnikov@otus.ru", "gender": "1"},
             {
                 "phone": "79175002040",
                 "email": "stupnikov@otus.ru",
                 "gender": 1,
                 "birthday": "01.01.1890",
             },
-            # {
-            #     "phone": "79175002040",
-            #     "email": "stupnikov@otus.ru",
-            #     "gender": 1,
-            #     "birthday": "XXX",
-            # },
-            # {
-            #     "phone": "79175002040",
-            #     "email": "stupnikov@otus.ru",
-            #     "gender": 1,
-            #     "birthday": "01.01.2000",
-            #     "first_name": 1,
-            # },
-            # {
-            #     "phone": "79175002040",
-            #     "email": "stupnikov@otus.ru",
-            #     "gender": 1,
-            #     "birthday": "01.01.2000",
-            #     "first_name": "s",
-            #     "last_name": 2,
-            # },
-            # {"phone": "79175002040", "birthday": "01.01.2000", "first_name": "s"},
-            # {"email": "stupnikov@otus.ru", "gender": 1, "last_name": 2},
+            {
+                "phone": "79175002040",
+                "email": "stupnikov@otus.ru",
+                "gender": 1,
+                "birthday": "XXX",
+            },
+            {
+                "phone": "79175002040",
+                "email": "stupnikov@otus.ru",
+                "gender": 1,
+                "birthday": "01.01.2000",
+                "first_name": 1,
+            },
+            {
+                "phone": "79175002040",
+                "email": "stupnikov@otus.ru",
+                "gender": 1,
+                "birthday": "01.01.2000",
+                "first_name": "s",
+                "last_name": 2,
+            },
+            {"phone": "79175002040", "birthday": "01.01.2000", "first_name": "s"},
+            {"email": "stupnikov@otus.ru", "gender": 1, "last_name": 2},
         ]
     )
     def test_invalid_score_request(self, arguments):
