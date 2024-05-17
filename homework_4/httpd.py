@@ -81,21 +81,20 @@ def handle_get_source_request(request_source):
     request_source = unquote(request_source)
     request_source = request_source.split("?")[0]
     try:
-        try:
-            if "/etc/passwd" in request_source:
-                status_code = "403 Forbidden"
-            if request_source.lstrip("/").endswith(
-                (".gif", ".jpeg", ".jpg", ".png", ".swf")
-            ):
-                body, content_len = open_file_handler(
-                    request_source.lstrip("/"), is_image=True
-                )
-            else:
-                body, content_len = open_file_handler(request_source.lstrip("/"))
-        except IsADirectoryError:
-            body, content_len = open_file_handler(
-                request_source.lstrip("/") + "index.html"
+        if request_source.endswith("/etc/passwd"):
+            status_code = "403 Forbidden"
+        elif request_source.lstrip("/").endswith(
+            (".gif", ".jpeg", ".jpg", ".png", ".swf")
+        ):
+            body, content_len, status_code = open_file_handler(
+                request_source.lstrip("/"), is_image=True
             )
+        else:
+            body, content_len, status_code = open_file_handler(request_source.lstrip("/"))
+    except IsADirectoryError:
+        body, content_len, status_code = open_file_handler(
+            request_source.lstrip("/") + "index.html"
+        )
     except FileNotFoundError:
         body = ""
         status_code = "404 Not Found"
@@ -106,15 +105,18 @@ def handle_get_source_request(request_source):
 
 
 def open_file_handler(request_source, is_image=False):
-    if is_image:
-        with open(request_source, "rb") as f:
-            body = f.read()
-            content_len = len(body)
-    else:
-        with open(request_source, "r", encoding="utf-8", errors="ignore") as f:
-            body = f.read()
-            content_len = len(body.encode("utf-8"))
-    return body, content_len
+    try:
+        if is_image:
+            with open(request_source, "rb") as f:
+                body = f.read()
+                content_len = len(body)
+        else:
+            with open(request_source, "r", encoding="utf-8", errors="ignore") as f:
+                body = f.read()
+                content_len = len(body.encode("utf-8"))
+        return body, content_len, '200 OK'
+    except FileNotFoundError:
+        return '', '', '404 Not Found'
 
 
 def handle_head_request(request_source):
@@ -134,7 +136,7 @@ def handle_content_type(request_source):
         "gif": "image/gif",
         "swf": "application/x-shockwave-flash"
     }
-    return content_type_map.get(request_source)
+    return content_type_map.get(request_source, '')
 
 
 if __name__ == "__main__":
