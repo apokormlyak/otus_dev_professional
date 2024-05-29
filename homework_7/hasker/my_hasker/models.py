@@ -10,6 +10,10 @@ class User(models.Model):
                                null=True, blank=True)
     reg_date = models.DateTimeField("Дата регистрации")
 
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
 
 class Question(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -18,6 +22,10 @@ class Question(models.Model):
     question_date = models.DateTimeField("Дата создания")
     tags = models.JSONField("Теги", null=True, blank=True)
 
+    class Meta:
+        verbose_name = 'Вопрос'
+        verbose_name_plural = 'Вопросы'
+
 
 class Answer(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -25,6 +33,14 @@ class Answer(models.Model):
     answer_date = models.DateTimeField("Дата создания")
     is_correct = models.BooleanField("Флаг правильного ответа", null=True, blank=True)
 
+    class Meta:
+        verbose_name = 'Ответ'
+        verbose_name_plural = 'Ответы'
+
 
 class Tags(models.Model):
     name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
