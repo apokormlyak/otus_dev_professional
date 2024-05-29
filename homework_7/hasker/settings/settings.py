@@ -85,8 +85,8 @@ DATABASES = {
         default="postgres://{0}:{1}@{2}:{3}/{4}".format(
             env("DJANGO_POSTGRES_USER", default="admin"),
             env("DJANGO_POSTGRES_PASSWORD", default="password"),
-            env("DJANGO_POSTGRES_HOST", default="postgres"),
-            env("DJANGO_POSTGRES_PORT", default="5432"),
+            env("DJANGO_POSTGRES_HOST", default="0.0.0.0"),
+            env("DJANGO_POSTGRES_PORT", default="5438"),
             env("DJANGO_POSTGRES_DB", default="hasker_db"),
         ),
     )
