@@ -1,0 +1,15 @@
+{% extends "common/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {{ title }} - {{ block.super }}
+{% endblock %}
+
+{% block h1 %}
+    {{ title }}
+{% endblock %}
+
+{% block content %}
+    {% crispy form %}
+{% endblock %}
