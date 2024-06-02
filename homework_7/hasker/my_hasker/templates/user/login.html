@@ -1,0 +1,74 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+
+
+<div class="uk-container uk-margin-top uk-width-1-2">
+    {% if request.user.is_authenticated %}
+
+        <h3>Log Out</h3>
+        <div uk-alert class="uk-alert-info">
+            <button class="uk-alert-close" type="button" uk-close></button>
+            <p>You have already logged in.</p>
+        </div>
+        <form method="POST" action="{% url 'logout' %}">
+            <button class="uk-button uk-button-primary">Log Out</button>
+            {% csrf_token %}
+        </form>
+
+    {% else %}
+
+        <h3>Log In</h3>
+
+        {% if form.non_field_errors %}
+            <div class="uk-margin-bottom">
+            {% for error in form.non_field_errors %}
+            <div class="uk-form-danger">{{ error }}</div>
+            {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="POST" class="uk-form-stacked">
+            <div class="uk-margin">
+                <div class="uk-inline uk-width-1-1">
+                    <span class="uk-form-icon" uk-icon="icon: user"></span>
+                    <input
+                        class="uk-input uk-width-1-1 {% if form.nickname.errors %} uk-form-danger {% endif %}"
+                        type="text" name="nickname"
+                        placeholder="Nickname"
+                        required
+                        {% if form.nickname.value != None %}value="{{ form.nickname.value|stringformat:'s' }}"{% endif %}
+                    >
+                </div>
+                {% if form.nickname.errors %}
+                <div class="uk-form-danger">{{ form.nickname.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="uk-margin">
+                <div class="uk-inline uk-width-1-1">
+                    <span class="uk-form-icon" uk-icon="icon: lock"></span>
+                    <input
+                        class="uk-input uk-width-1-1 {% if form.password.errors %} uk-form-danger {% endif %}"
+                        type="password"
+                        name="password"
+                        placeholder="Password"
+                        required
+                    >
+                </div>
+                {% if form.password.errors %}
+                <div class="uk-form-danger">{{ form.password.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="uk-margin">
+                <button class="uk-button uk-button-primary">Submit</button>
+                <a class="uk-link-text uk-margin-left" href="{% url 'signup' %}">Sign Up</a>
+            </div>
+            {% csrf_token %}
+        </form>
+
+    {% endif %}
+
+</div>
+
+
+{% endblock content %}

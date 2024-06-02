@@ -44,7 +44,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "my_hasker.apps.MyHaskerConfig"
+    "my_hasker.apps.MyHaskerConfig",
+    'crispy_forms',
+    'crispy_bootstrap4',
+    'rest_framework'
 ]
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 MIDDLEWARE = [

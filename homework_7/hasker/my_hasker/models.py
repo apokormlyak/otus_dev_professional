@@ -9,6 +9,7 @@ class User(models.Model):
                                height_field=None, width_field=None, max_length=100,
                                null=True, blank=True)
     reg_date = models.DateTimeField("Дата регистрации")
+    USERNAME_FIELD = 'admin'
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -44,3 +45,36 @@ class Tags(models.Model):
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
+
+
+VOTE_UP = 1
+VOTE_DOWN = -1
+VOTE_CHOICES = ((VOTE_UP, 'Vote Up'), (VOTE_DOWN, 'Vote Down'))
+
+
+class AnswerVote(models.Model):
+    timestamp = models.DateTimeField(auto_now=True)
+    to = models.ForeignKey(Answer, on_delete=models.CASCADE, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
+    value = models.ImageField(choices=VOTE_CHOICES)
+
+    class Meta:
+        verbose_name = 'Голосование: ответ'
+        verbose_name_plural = 'Голосование: ответы'
+
+    def __str__(self):
+        return f"{self.user.nickname} {self.value:+d}"
+
+
+class QuestionVote(models.Model):
+    timestamp = models.DateTimeField(auto_now=True)
+    to = models.ForeignKey(Question, on_delete=models.CASCADE, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
+    value = models.ImageField(choices=VOTE_CHOICES)
+
+    class Meta:
+        verbose_name = 'Голосование: вопрос'
+        verbose_name_plural = 'Голосование: вопросы'
+
+    def __str__(self):
+        return f"{self.user.nickname} {self.value:+d}"
