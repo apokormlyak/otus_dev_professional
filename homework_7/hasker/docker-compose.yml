@@ -1,0 +1,24 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres:13.1
+    env_file:
+      - environment
+    restart: always
+    ports:
+      - "5438:5432"
+    volumes:
+      - db_data:/home/postgresql
+      - db_data:/var/log/postgresql
+    networks:
+      - net
+
+networks:
+  net:
+
+volumes:
+    static_volume: { }
+    media_volume: { }
+    db_data:
+        external: true

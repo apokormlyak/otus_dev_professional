@@ -1,0 +1,24 @@
+# General
+# ------------------------------------------------------------------------------
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost, 0.0.0.0
+DJANGO_STATIC_URL=static/
+HOST_NAME=localhost
+
+#   PostgreSQL
+#==========================================
+POSTGRES_DB=hasker_db
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=password
+PGDATA=/home/postgresql/data
+
+DJANGO_POSTGRES_HOST=0.0.0.0
+DJANGO_POSTGRES_PORT=5438
+DJANGO_POSTGRES_DB=hasker_db
+DJANGO_POSTGRES_USER=admin
+DJANGO_POSTGRES_PASSWORD=password
+
+REDIS_CACHE_DB=0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_WORKER_NAME=celery
+REDIS_URL=redis://redis:6379
